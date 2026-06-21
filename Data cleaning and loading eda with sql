@@ -1,0 +1,111 @@
+-- =========================================
+-- ONLINE RETAIL DATA CLEANING + EDA SCRIPT
+-- =========================================
+
+-- STEP 1: View raw data
+SELECT *
+FROM online_retail
+LIMIT 10;
+
+
+-- STEP 2: Remove NULL CustomerID
+CREATE TABLE retail_step1 AS
+SELECT *
+FROM online_retail
+WHERE CustomerID IS NOT NULL;
+
+
+-- STEP 3: Remove cancelled orders (InvoiceNo starts with 'C')
+CREATE TABLE retail_step2 AS
+SELECT *
+FROM retail_step1
+WHERE InvoiceNo NOT LIKE 'C%';
+
+
+-- STEP 4: Remove invalid Quantity (<= 0)
+CREATE TABLE retail_step3 AS
+SELECT *
+FROM retail_step2
+WHERE Quantity > 0;
+
+
+-- STEP 5: Remove invalid UnitPrice (<= 0)
+CREATE TABLE retail_step4 AS
+SELECT *
+FROM retail_step3
+WHERE UnitPrice > 0;
+
+
+-- STEP 6: Create final cleaned table with TotalSales
+CREATE TABLE retail_clean AS
+SELECT *,
+       (Quantity * UnitPrice) AS TotalSales
+FROM retail_step4;
+
+
+-- STEP 7: Remove duplicates
+CREATE TABLE retail_final AS
+SELECT DISTINCT *
+FROM retail_clean;
+
+
+-- =========================================
+-- FEATURE ENGINEERING (TIME FEATURES)
+-- =========================================
+
+SELECT *,
+       YEAR(InvoiceDate)  AS Year,
+       MONTH(InvoiceDate) AS Month,
+       DAY(InvoiceDate)   AS Day,
+       HOUR(InvoiceDate)  AS Hour
+FROM retail_final;
+
+
+-- =========================================
+-- 📊 EDA QUERIES (FOR POWER BI / DASHBOARD)
+-- =========================================
+
+-- TOTAL REVENUE
+SELECT SUM(TotalSales) AS Total_Revenue
+FROM retail_final;
+
+
+-- SALES BY COUNTRY (TOP)
+SELECT Country,
+       SUM(TotalSales) AS Revenue
+FROM retail_final
+GROUP BY Country
+ORDER BY Revenue DESC;
+
+
+-- TOP 10 PRODUCTS
+SELECT Description,
+       SUM(TotalSales) AS Revenue
+FROM retail_final
+GROUP BY Description
+ORDER BY Revenue DESC
+LIMIT 10;
+
+
+-- MONTHLY SALES TREND
+SELECT 
+    YEAR(InvoiceDate) AS Year,
+    MONTH(InvoiceDate) AS Month,
+    SUM(TotalSales) AS Revenue
+FROM retail_final
+GROUP BY YEAR(InvoiceDate), MONTH(InvoiceDate)
+ORDER BY Year, Month;
+
+
+-- TOP CUSTOMERS
+SELECT CustomerID,
+       SUM(TotalSales) AS Total_Spend
+FROM retail_final
+GROUP BY CustomerID
+ORDER BY Total_Spend DESC
+LIMIT 10;
+
+
+-- AVERAGE ORDER VALUE
+SELECT AVG(TotalSales) AS Avg_Order_Value
+FROM retail_final;
